@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { t, translate, translateAIResponse, getUserLang } from '../france/translator.js';
 
 export const commands = [
   {
@@ -6,10 +7,10 @@ export const commands = [
     aliases: ['sc', 'script'],
     description: 'Sends the official GitHub repository and stats for FLASH-MD',
     execute: async ({ sock, from, config, msg }) => {
-      const botName = config.BOT_NAME || 'Flash-MD'
-      const botVersion = config.BOT_VERSION || '3.0.0'
+      const botName = config.BOT_NAME || 'Flash-MD';
+      const botVersion = config.BOT_VERSION || '3.0.0';
       const repoApiUrl = 'https://api.github.com/repos/franceking1/Flash-Md-V3';
-      const repoUrl = 'https://github.com/franceking1/Flash-Md-V3';
+      const repoUrl = 'https://flash-vercel-iota.vercel.app';
 
       try {
         const { data } = await axios.get(repoApiUrl);
@@ -20,7 +21,7 @@ export const commands = [
         const createdAt = new Date(data.created_at).toLocaleDateString('en-GB');
         const lastUpdated = new Date(data.pushed_at).toLocaleDateString('en-GB');
 
-        const repoInfo = `*🤖 ${botName.toUpperCase()} ${botVersion}*
+        const repoInfo = `*🤖 ${botName.toUpperCase()}*
 
 A powerful, open-source WhatsApp bot built for speed, reliability, and ease of use.
 
@@ -34,7 +35,7 @@ ${repoUrl}
 📅 *Created:* ${createdAt}
 ♻️ *Last Updated:* ${lastUpdated}
 
-*⚡ Powered by ${botName} ${botVersion}*
+*⚡ Powered by France King*
 
 _Star ⭐ the repository if you like the bot and want to support future development!_
 _Don't forget to fork 🍴 and watch 👀 for updates!_`;
@@ -54,8 +55,14 @@ _Don't forget to fork 🍴 and watch 👀 for updates!_`;
 
       } catch (error) {
         console.error('GitHub Repo Error:', error.message);
+        const errorMsg = `❌ *Error fetching repository stats*
+
+Could not retrieve FLASH-MD repository information at this time.
+
+*⚡ Powered by France King*`;
+
         await sock.sendMessage(from, {
-          text: `❌ Failed to fetch repository information. Please try again later.\n\n⚡ Powered by ${botName}`,
+          text: errorMsg,
           contextInfo: {
             forwardingScore: 1,
             isForwarded: true,
