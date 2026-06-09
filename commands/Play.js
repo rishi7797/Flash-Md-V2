@@ -6,6 +6,7 @@ import ffmpegStatic from 'ffmpeg-static';
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
+import { t, translate, translateAIResponse, getUserLang } from '../france/translator.js';
 
 let ffmpegPath = null;
 
@@ -51,7 +52,8 @@ export const commands = [
       const botVersion = config.BOT_VERSION || '3.0.0';
 
       if (!text) {
-        return sock.sendMessage(from, { text: `❗ Please provide a song name.\n\n⚡ Powered by ${botName} ${botVersion}` });
+        const noQueryMsg = await t(from, 'play', 'noQuery');
+        return sock.sendMessage(from, { text: `${noQueryMsg}\n\n⚡ Powered by ${botName} ${botVersion}` });
       }
 
       try {
@@ -59,26 +61,30 @@ export const commands = [
           throw new Error('Nayan API not configured');
         }
 
-        await sock.sendMessage(from, { text: '🔍 Searching for your song...' }, { quoted: msg });
+        const searchingMsg = await t(from, 'play', 'searching');
+        await sock.sendMessage(from, { text: searchingMsg }, { quoted: msg });
 
         const search = await yts(text);
         const video = search.videos?.[0];
 
         if (!video) {
-          return sock.sendMessage(from, { text: `❌ No results found for your query.\n\n⚡ Powered by ${botName} ${botVersion}` });
+          const notFoundMsg = await t(from, 'play', 'notFound');
+          return sock.sendMessage(from, { text: `${notFoundMsg}\n\n⚡ Powered by ${botName} ${botVersion}` });
         }
 
         const videoUrl = `https://youtu.be/${video.videoId}`;
         const apiUrl = `${API_CONFIG.nayanApi.youtube}?url=${encodeURIComponent(videoUrl)}`;
 
-        await sock.sendMessage(from, { text: '⬇️ Downloading your audio...' }, { quoted: msg });
+        const downloadingMsg = await t(from, 'play', 'downloading');
+        await sock.sendMessage(from, { text: downloadingMsg }, { quoted: msg });
 
         const response = await axios.get(apiUrl, {
           timeout: API_CONFIG.nayanApi.timeout || 30000
         });
 
         if (!response.data?.status || !response.data?.data?.audio) {
-          return sock.sendMessage(from, { text: `❌ Failed to retrieve download link.\n\n⚡ Powered by ${botName} ${botVersion}` });
+          const failedMsg = await t(from, 'play', 'failed');
+          return sock.sendMessage(from, { text: `${failedMsg}\n\n⚡ Powered by ${botName} ${botVersion}` });
         }
 
         const downloadLink = response.data.data.audio;
@@ -87,17 +93,25 @@ export const commands = [
         const safeTitle = (video.title || 'audio').replace(/[\\/:*?"<>|]/g, '');
         const fileName = `${safeTitle}.mp3`;
 
+        const titleLabel = await t(from, 'play', 'title');
+        const durationLabel = await t(from, 'play', 'duration');
+        const viewsLabel = await t(from, 'play', 'views');
+        const uploadedLabel = await t(from, 'play', 'uploaded');
+        const channelLabel = await t(from, 'play', 'channel');
+        const qualityLabel = await t(from, 'play', 'quality');
+        const poweredLabel = await t(from, 'play', 'powered');
+
         await sock.sendMessage(from, {
           image: { url: video.thumbnail || videoInfo.thumb || 'https://via.placeholder.com/300' },
           caption:
             `*🎵 ${botName.toUpperCase()} SONG PLAYER*\n\n` +
-            `╭─❏ *Title:* ${videoInfo.title || video.title}\n` +
-            `│ *Duration:* ${video.timestamp || 'N/A'}\n` +
-            `│ *Views:* ${video.views?.toLocaleString() || 'N/A'}\n` +
-            `│ *Uploaded:* ${video.ago || 'N/A'}\n` +
-            `│ *Channel:* ${videoInfo.channel || video.author?.name}\n` +
-            `│ *Quality:* ${videoInfo.quality || '128'}kbps\n` +
-            `│ *Powered by:* ${botName}\n` +
+            `╭─❏ ${titleLabel} ${videoInfo.title || video.title}\n` +
+            `│ ${durationLabel} ${video.timestamp || 'N/A'}\n` +
+            `│ ${viewsLabel} ${video.views?.toLocaleString() || 'N/A'}\n` +
+            `│ ${uploadedLabel} ${video.ago || 'N/A'}\n` +
+            `│ ${channelLabel} ${videoInfo.channel || video.author?.name}\n` +
+            `│ ${qualityLabel} ${videoInfo.quality || '128'}kbps\n` +
+            `│ ${poweredLabel} ${botName}\n` +
             `╰─────────────\n\n` +
             `🔗 https://youtube.com/watch?v=${video.videoId}`
         }, { quoted: msg });
@@ -112,7 +126,8 @@ export const commands = [
         });
 
         if (!ffmpegPath) {
-          await sock.sendMessage(from, { text: '📤 Sending your audio...' }, { quoted: msg });
+          const sendingMsg = await t(from, 'play', 'sending');
+          await sock.sendMessage(from, { text: sendingMsg }, { quoted: msg });
           await sock.sendMessage(from, {
             audio: audioRes.data,
             mimetype: 'audio/mpeg',
@@ -126,7 +141,8 @@ export const commands = [
 
         fs.writeFileSync(inputPath, audioRes.data);
 
-        await sock.sendMessage(from, { text: '🎧 Processing audio...' }, { quoted: msg });
+        const processingMsg = await t(from, 'play', 'processing');
+        await sock.sendMessage(from, { text: processingMsg }, { quoted: msg });
 
         const conversionPromise = new Promise((resolve, reject) => {
           ffmpeg(inputPath)
@@ -145,7 +161,8 @@ export const commands = [
         try {
           await Promise.race([conversionPromise, timeoutPromise]);
           
-          await sock.sendMessage(from, { text: '📤 Sending your audio...' }, { quoted: msg });
+          const sendingMsg = await t(from, 'play', 'sending');
+          await sock.sendMessage(from, { text: sendingMsg }, { quoted: msg });
           
           await sock.sendMessage(from, {
             audio: fs.readFileSync(outputPath),
@@ -159,7 +176,8 @@ export const commands = [
           if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
           if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
           
-          await sock.sendMessage(from, { text: '📤 Sending original audio...' }, { quoted: msg });
+          const sendingOriginalMsg = await t(from, 'play', 'sendingOriginal');
+          await sock.sendMessage(from, { text: sendingOriginalMsg }, { quoted: msg });
           await sock.sendMessage(from, {
             audio: audioRes.data,
             mimetype: 'audio/mpeg',
@@ -172,7 +190,8 @@ export const commands = [
         if (err.response) {
           console.error('Response data:', err.response.data);
         }
-        sock.sendMessage(from, { text: `❌ Error: ${err.message || 'Unknown error'}\n\n⚡ Powered by ${botName} ${botVersion}` });
+        const errorMsg = await t(from, 'play', 'error');
+        sock.sendMessage(from, { text: `${errorMsg} ${err.message || 'Unknown error'}\n\n⚡ Powered by ${botName} ${botVersion}` });
       }
     }
   }
