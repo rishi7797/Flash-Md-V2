@@ -2,6 +2,7 @@ import { S_WHATSAPP_NET } from '@whiskeysockets/baileys';
 import * as Jimp from 'jimp';
 import { Sticker, StickerTypes } from 'wa-sticker-formatter';
 import { formatJid, getSenderJid, MESSAGES, protectOwner } from '../france/index.js';
+import { t, translate, translateAIResponse, getUserLang } from '../france/translator.js';
 
 let isStatusFetching = false;
 let fetchInterval = null;
@@ -19,18 +20,22 @@ export const commands = [
       } else if (text) {
         targetJid = text.includes('@s.whatsapp.net') ? text : formatJid(text);
       } else {
-        return sock.sendMessage(from, { text: MESSAGES.user.block.noTarget }, { quoted: msg });
+        const noTargetMsg = await t(from, 'user', 'blockNoTarget');
+        return sock.sendMessage(from, { text: noTargetMsg }, { quoted: msg });
       }
       
       if (protectOwner(targetJid)) {
-        return sock.sendMessage(from, { text: MESSAGES.user.block.protected }, { quoted: msg });
+        const protectedMsg = await t(from, 'user', 'blockProtected');
+        return sock.sendMessage(from, { text: protectedMsg }, { quoted: msg });
       }
       
       try {
         await sock.updateBlockStatus(targetJid, 'block');
-        await sock.sendMessage(from, { text: MESSAGES.user.block.success.replace('{jid}', targetJid) }, { quoted: msg });
+        const successMsg = await t(from, 'user', 'blockSuccess');
+        await sock.sendMessage(from, { text: successMsg.replace('{jid}', targetJid) }, { quoted: msg });
       } catch {
-        await sock.sendMessage(from, { text: MESSAGES.user.block.error }, { quoted: msg });
+        const errorMsg = await t(from, 'user', 'blockError');
+        await sock.sendMessage(from, { text: errorMsg }, { quoted: msg });
       }
     }
   },
@@ -46,18 +51,22 @@ export const commands = [
       } else if (text) {
         targetJid = text.includes('@s.whatsapp.net') ? text : formatJid(text);
       } else {
-        return sock.sendMessage(from, { text: MESSAGES.user.unblock.noTarget }, { quoted: msg });
+        const noTargetMsg = await t(from, 'user', 'unblockNoTarget');
+        return sock.sendMessage(from, { text: noTargetMsg }, { quoted: msg });
       }
       
       if (protectOwner(targetJid)) {
-        return sock.sendMessage(from, { text: MESSAGES.user.unblock.protected }, { quoted: msg });
+        const protectedMsg = await t(from, 'user', 'unblockProtected');
+        return sock.sendMessage(from, { text: protectedMsg }, { quoted: msg });
       }
       
       try {
         await sock.updateBlockStatus(targetJid, 'unblock');
-        await sock.sendMessage(from, { text: MESSAGES.user.unblock.success.replace('{jid}', targetJid) }, { quoted: msg });
+        const successMsg = await t(from, 'user', 'unblockSuccess');
+        await sock.sendMessage(from, { text: successMsg.replace('{jid}', targetJid) }, { quoted: msg });
       } catch {
-        await sock.sendMessage(from, { text: MESSAGES.user.unblock.error }, { quoted: msg });
+        const errorMsg = await t(from, 'user', 'unblockError');
+        await sock.sendMessage(from, { text: errorMsg }, { quoted: msg });
       }
     }
   },
@@ -68,7 +77,8 @@ export const commands = [
     ownerOnly: true,
     execute: async ({ sock, from, text, msg }) => {
       if (!text) {
-        return sock.sendMessage(from, { text: MESSAGES.user.setbio.noText }, { quoted: msg });
+        const noTextMsg = await t(from, 'user', 'setbioNoText');
+        return sock.sendMessage(from, { text: noTextMsg }, { quoted: msg });
       }
       
       try {
@@ -77,9 +87,11 @@ export const commands = [
           attrs: { to: S_WHATSAPP_NET, type: 'set', xmlns: 'status' },
           content: [{ tag: 'status', attrs: {}, content: Buffer.from(text, 'utf-8') }]
         });
-        await sock.sendMessage(from, { text: MESSAGES.user.setbio.success }, { quoted: msg });
+        const successMsg = await t(from, 'user', 'setbioSuccess');
+        await sock.sendMessage(from, { text: successMsg }, { quoted: msg });
       } catch {
-        await sock.sendMessage(from, { text: MESSAGES.user.setbio.error }, { quoted: msg });
+        const errorMsg = await t(from, 'user', 'setbioError');
+        await sock.sendMessage(from, { text: errorMsg }, { quoted: msg });
       }
     }
   },
@@ -90,12 +102,14 @@ export const commands = [
     ownerOnly: true,
     execute: async ({ sock, from, text, msg }) => {
       if (!text) {
-        return sock.sendMessage(from, { text: MESSAGES.user.autobio.usage }, { quoted: msg });
+        const usageMsg = await t(from, 'user', 'autobioUsage');
+        return sock.sendMessage(from, { text: usageMsg }, { quoted: msg });
       }
       
       if (text === 'on') {
         if (isStatusFetching) {
-          return sock.sendMessage(from, { text: MESSAGES.user.autobio.alreadyOn }, { quoted: msg });
+          const alreadyOnMsg = await t(from, 'user', 'autobioAlreadyOn');
+          return sock.sendMessage(from, { text: alreadyOnMsg }, { quoted: msg });
         }
         
         isStatusFetching = true;
@@ -111,20 +125,24 @@ export const commands = [
             });
           } catch {}
         }, 60000);
-        return sock.sendMessage(from, { text: MESSAGES.user.autobio.enabled }, { quoted: msg });
+        const enabledMsg = await t(from, 'user', 'autobioEnabled');
+        return sock.sendMessage(from, { text: enabledMsg }, { quoted: msg });
       }
       
       if (text === 'off') {
         if (!isStatusFetching) {
-          return sock.sendMessage(from, { text: MESSAGES.user.autobio.alreadyOff }, { quoted: msg });
+          const alreadyOffMsg = await t(from, 'user', 'autobioAlreadyOff');
+          return sock.sendMessage(from, { text: alreadyOffMsg }, { quoted: msg });
         }
         
         clearInterval(fetchInterval);
         isStatusFetching = false;
-        return sock.sendMessage(from, { text: MESSAGES.user.autobio.disabled }, { quoted: msg });
+        const disabledMsg = await t(from, 'user', 'autobioDisabled');
+        return sock.sendMessage(from, { text: disabledMsg }, { quoted: msg });
       }
       
-      await sock.sendMessage(from, { text: MESSAGES.user.autobio.usage }, { quoted: msg });
+      const usageMsg = await t(from, 'user', 'autobioUsage');
+      await sock.sendMessage(from, { text: usageMsg }, { quoted: msg });
     }
   },
   {
@@ -137,9 +155,11 @@ export const commands = [
       try {
         pp = await sock.profilePictureUrl(targetJid, 'image');
       } catch {
-        pp = MESSAGES.user.getpp.defaultImage;
+        const defaultImageMsg = await t(from, 'user', 'getppDefaultImage');
+        pp = defaultImageMsg;
       }
-      await sock.sendMessage(from, { image: { url: pp }, caption: MESSAGES.user.getpp.caption }, { quoted: msg });
+      const captionMsg = await t(from, 'user', 'getppCaption');
+      await sock.sendMessage(from, { image: { url: pp }, caption: captionMsg }, { quoted: msg });
     }
   },
 {
@@ -154,7 +174,8 @@ export const commands = [
     try {
       pp = await sock.profilePictureUrl(targetJid, 'image');
     } catch {
-      pp = MESSAGES.user.whois.defaultImage;
+      const defaultImageMsg = await t(from, 'user', 'whoisDefaultImage');
+      pp = defaultImageMsg;
     }
     
     let about = 'No status';
@@ -189,7 +210,13 @@ export const commands = [
       }
     } catch {}
     
-    const caption = `👤 *ABOUT*\n\n*${about}*\n\n*Name:* @${number}\n\n📅 *Set on:* ${setOn}\n🕒 *Set at:* ${setAt}\n\n*_FLASH-MD V-3.0.0_*`;
+    const aboutLabel = await t(from, 'user', 'whoisAbout');
+    const nameLabel = await t(from, 'user', 'whoisName');
+    const setOnLabel = await t(from, 'user', 'whoisSetOn');
+    const setAtLabel = await t(from, 'user', 'whoisSetAt');
+    const footerMsg = await t(from, 'user', 'whoisFooter');
+    
+    const caption = `👤 *${aboutLabel}*\n\n*${about}*\n\n*${nameLabel}:* @${number}\n\n📅 *${setOnLabel}:* ${setOn}\n🕒 *${setAtLabel}:* ${setAt}\n\n${footerMsg}`;
     
     await sock.sendMessage(
       from,
@@ -210,16 +237,19 @@ export const commands = [
     execute: async ({ sock, from, msg }) => {
       try {
         const groups = Object.values(await sock.groupFetchAllParticipating());
-        let text = MESSAGES.user.mygroups.header;
+        const headerMsg = await t(from, 'user', 'mygroupsHeader');
+        const itemTemplate = await t(from, 'user', 'mygroupsItem');
+        let text = headerMsg;
         for (const g of groups) {
-          text += MESSAGES.user.mygroups.item
+          text += itemTemplate
             .replace('{subject}', g.subject)
             .replace('{count}', g.participants.length)
             .replace('{id}', g.id);
         }
         await sock.sendMessage(from, { text }, { quoted: msg });
       } catch {
-        await sock.sendMessage(from, { text: MESSAGES.user.mygroups.error }, { quoted: msg });
+        const errorMsg = await t(from, 'user', 'mygroupsError');
+        await sock.sendMessage(from, { text: errorMsg }, { quoted: msg });
       }
     }
   },
@@ -247,7 +277,8 @@ export const commands = [
     category: 'USER',
     ownerOnly: true,
     execute: async ({ sock, from, msg }) => {
-      await sock.sendMessage(from, { text: MESSAGES.user.restart.message }, { quoted: msg });
+      const restartMsg = await t(from, 'user', 'restartMessage');
+      await sock.sendMessage(from, { text: restartMsg }, { quoted: msg });
       process.exit(0);
     }
   }
