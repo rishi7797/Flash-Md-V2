@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { downloadContentFromMessage } from '@whiskeysockets/baileys';
 import { MESSAGES, API_CONFIG } from '../france/index.js';
+import { t, translate, translateAIResponse, getUserLang } from '../france/translator.js';
 
 const TEMP_DIR = path.join(process.cwd(), 'temp');
 if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true });
@@ -37,8 +38,9 @@ export const commands = [
       const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
       
       if (!quoted || (!quoted.audioMessage && !quoted.videoMessage)) {
+        const noReplyMsg = await t(from, 'shazam', 'noReply');
         return sock.sendMessage(from, {
-          text: MESSAGES.shazam.noReply
+          text: noReplyMsg
         }, { quoted: msg });
       }
       
@@ -56,8 +58,9 @@ export const commands = [
         const matchedSong = await identifySong(buffer);
         
         if (!matchedSong) {
+          const notRecognizedMsg = await t(from, 'shazam', 'notRecognized');
           return sock.sendMessage(from, {
-            text: MESSAGES.shazam.notRecognized
+            text: notRecognizedMsg
           }, { quoted: msg });
         }
         
@@ -65,30 +68,39 @@ export const commands = [
         const ytQuery = `${title} ${artists?.[0]?.name || ''}`;
         const ytSearch = await yts(ytQuery);
         
-        let response = MESSAGES.shazam.header;
-        response += MESSAGES.shazam.title.replace('{title}', title || 'Unknown');
+        const headerMsg = await t(from, 'shazam', 'header');
+        const titleMsg = await t(from, 'shazam', 'title');
+        const artistsMsg = await t(from, 'shazam', 'artists');
+        const albumMsg = await t(from, 'shazam', 'album');
+        const genresMsg = await t(from, 'shazam', 'genres');
+        const releaseMsg = await t(from, 'shazam', 'release');
+        const youtubeMsg = await t(from, 'shazam', 'youtube');
+        const footerMsg = await t(from, 'shazam', 'footer');
+        
+        let response = headerMsg;
+        response += titleMsg.replace('{title}', title || 'Unknown');
         
         if (artists) {
-          response += MESSAGES.shazam.artists.replace('{artists}', artists.map(a => a.name).join(', '));
+          response += artistsMsg.replace('{artists}', artists.map(a => a.name).join(', '));
         }
         if (album?.name) {
-          response += MESSAGES.shazam.album.replace('{album}', album.name);
+          response += albumMsg.replace('{album}', album.name);
         }
         if (genres?.length) {
-          response += MESSAGES.shazam.genres.replace('{genres}', genres.map(g => g.name).join(', '));
+          response += genresMsg.replace('{genres}', genres.map(g => g.name).join(', '));
         }
         if (release_date) {
           const [year, month, day] = release_date.split('-');
-          response += MESSAGES.shazam.release
+          response += releaseMsg
             .replace('{day}', day)
             .replace('{month}', month)
             .replace('{year}', year);
         }
         if (ytSearch?.videos?.[0]?.url) {
-          response += MESSAGES.shazam.youtube.replace('{url}', ytSearch.videos[0].url);
+          response += youtubeMsg.replace('{url}', ytSearch.videos[0].url);
         }
         
-        response += MESSAGES.shazam.footer.replace('{botName}', botName);
+        response += footerMsg.replace('{botName}', botName);
         
         return sock.sendMessage(from, {
           text: response.trim(),
@@ -104,8 +116,9 @@ export const commands = [
         }, { quoted: msg });
       } catch (err) {
         console.error('Shazam error:', err);
+        const errorMsg = await t(from, 'shazam', 'error');
         return sock.sendMessage(from, {
-          text: MESSAGES.shazam.error
+          text: errorMsg
         }, { quoted: msg });
       }
     }
